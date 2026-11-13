@@ -60,13 +60,23 @@ dialog h3{margin:0 0 4px;font-weight:800;font-size:1.3rem}
 .ordning button{width:40px;height:40px;padding:0;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;flex:none}
 .ordning button:disabled{opacity:.3;cursor:default}
 .ordning button svg{width:18px;height:18px}
+body.last #hej,body.last #appar,body.last .bara-upplast{display:none}
+body.last .top{justify-content:flex-end}
+.falt{width:100%;font:inherit;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:999px;padding:11px 18px}
+.falt:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.knapp{margin-top:10px;width:100%;height:46px;border:0;border-radius:999px;background:var(--acc);color:var(--accink);font-weight:800;cursor:pointer}
+.knapp.ljus{background:var(--card);color:var(--ink);border:2px solid var(--line);font-weight:700}
+.knapp:disabled{opacity:.6;cursor:default}
+.status{margin:10px 4px 0;font-size:.88rem;font-weight:700;color:var(--mut);min-height:1.3em}
+.status.fel{color:#c62828}
+.status.ok{color:#2f9e5b}
 .close{margin-top:22px;width:100%;height:46px;border:0;border-radius:999px;background:var(--acc);color:var(--accink);font-weight:800;cursor:pointer}
 </style>
 </head>
-<body>
+<body class="last">
 <main>
   <div class="top">
-    <div>
+    <div id="hej">
       <p class="dag" id="dag"></p>
       <h1 id="halsning">Hej!</h1>
     </div>
@@ -103,7 +113,7 @@ dialog h3{margin:0 0 4px;font-weight:800;font-size:1.3rem}
 
 <dialog id="dlg">
   <h3>Inställningar</h3>
-  <div class="sek">
+  <div class="sek bara-upplast">
     <h4>Tema</h4>
     <div class="seg" id="tema">
       <button type="button" data-t="auto">Auto</button>
@@ -111,51 +121,129 @@ dialog h3{margin:0 0 4px;font-weight:800;font-size:1.3rem}
       <button type="button" data-t="dark">Mörkt</button>
     </div>
   </div>
-  <div class="sek">
+  <div class="sek bara-upplast">
     <h4>Ordning på knapparna</h4>
     <p class="hint">Tryck på pilarna för att flytta en app upp eller ner.</p>
     <ul class="ordning" id="ordning"></ul>
+  </div>
+  <div class="sek">
+    <h4>GitHub-token</h4>
+    <div id="tokenNy">
+      <p class="hint">Klistra in din token för repot landing och tryck på Spara token. Utan rätt token visas inga knappar.</p>
+      <input class="falt" id="tokenFalt" type="password" placeholder="github_pat_..." autocomplete="off" spellcheck="false">
+      <button class="knapp" id="tokenSpara" type="button">Spara token</button>
+    </div>
+    <div id="tokenFinns" hidden>
+      <p class="hint">Din token är sparad på den här enheten. Tema och ordning sparas i filen installningar.json i repot landing, så de blir likadana på alla dina enheter.</p>
+      <button class="knapp ljus" id="tokenTaBort" type="button">Ta bort token från den här enheten</button>
+    </div>
+    <p class="status" id="status"></p>
   </div>
   <button class="close" id="stang" type="button">Klar</button>
 </dialog>
 
 <script>
 (function(){
+  var AGARE = 'tomas-m-andersson', REPO = 'landing', FIL = 'installningar.json';
+  var $ = function(id){ return document.getElementById(id); };
+  var LS = {
+    get: function(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+    set: function(k, v){ try { localStorage.setItem(k, v); } catch(e){} },
+    del: function(k){ try { localStorage.removeItem(k); } catch(e){} }
+  };
+
+  // ---------- Datum och hälsning ----------
   var pad = function(n){ return String(n).padStart(2,'0'); };
   var DAGAR = ['Söndag','Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag'];
   var nu = new Date(), h = nu.getHours();
-  document.getElementById('dag').textContent = DAGAR[nu.getDay()] + ' ' + nu.getFullYear() + '-' + pad(nu.getMonth()+1) + '-' + pad(nu.getDate());
-  document.getElementById('halsning').textContent = h < 5 ? 'God natt!' : h < 10 ? 'God morgon!' : h < 17 ? 'Hej!' : 'God kväll!';
-  // ---------- Tema ----------
-  var tema = 'auto';
-  try { tema = localStorage.getItem('landing-tema') || 'auto'; } catch(e){}
-  function satTema(t){
-    tema = t;
-    if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
-    try { localStorage.setItem('landing-tema', t); } catch(e){}
-    document.querySelectorAll('#tema button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.t === t ? 'true' : 'false'); });
+  $('dag').textContent = DAGAR[nu.getDay()] + ' ' + nu.getFullYear() + '-' + pad(nu.getMonth()+1) + '-' + pad(nu.getDate());
+  $('halsning').textContent = h < 5 ? 'God natt!' : h < 10 ? 'God morgon!' : h < 17 ? 'Hej!' : 'God kväll!';
+
+  function status(text, typ){ var p = $('status'); p.textContent = text || ''; p.className = 'status' + (typ ? ' ' + typ : ''); }
+
+  // ---------- GitHub ----------
+  var token = LS.get('landing-token');
+  var sha = null;
+  function gh(url, opt){
+    opt = opt || {};
+    opt.cache = 'no-store';
+    opt.headers = Object.assign({ 'Accept': 'application/vnd.github+json', 'Authorization': 'Bearer ' + token }, opt.headers || {});
+    return fetch('https://api.github.com' + url, opt);
   }
-  document.querySelectorAll('#tema button').forEach(function(b){ b.onclick = function(){ satTema(b.dataset.t); }; });
-  satTema(tema);
+  var filUrl = '/repos/' + AGARE + '/' + REPO + '/contents/' + FIL;
+  var tillB64 = function(t){ return btoa(unescape(encodeURIComponent(t))); };
+  var franB64 = function(b){ return decodeURIComponent(escape(atob(String(b).replace(/\s/g, '')))); };
+
+  // Kollar att token hör till ditt GitHub-konto. Svar: 'ok', 'fel' eller 'natfel'.
+  function kollaToken(){
+    return gh('/user').then(function(r){
+      if (r.status === 401 || r.status === 403) return 'fel';
+      if (!r.ok) return 'natfel';
+      return r.json().then(function(u){ return u && String(u.login).toLowerCase() === AGARE ? 'ok' : 'fel'; });
+    }).catch(function(){ return 'natfel'; });
+  }
+
+  function hamtaInst(){
+    return gh(filUrl + '?ref=main').then(function(r){
+      if (r.status === 404) { sha = null; return null; }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json().then(function(j){ sha = j.sha; return JSON.parse(franB64(j.content)); });
+    });
+  }
+
+  var sparTimer = null;
+  function sparaSenare(){
+    clearTimeout(sparTimer);
+    status('Sparar…');
+    sparTimer = setTimeout(function(){ sparaInst(true); }, 700);
+  }
+  function sparaInst(forsokIgen){
+    var data = { format: 1, uppdaterad: new Date().toISOString(), tema: tema, ordning: ordning };
+    var body = { message: 'Uppdatera inställningar', content: tillB64(JSON.stringify(data, null, 2) + '\n'), branch: 'main' };
+    if (sha) body.sha = sha;
+    return gh(filUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function(r){
+      if (r.ok) return r.json().then(function(j){ sha = j.content && j.content.sha; status('Sparat på GitHub', 'ok'); });
+      if ((r.status === 409 || r.status === 422) && forsokIgen) {
+        // Filen har ändrats från en annan enhet: hämta senaste versionen och spara igen.
+        return gh(filUrl + '?ref=main').then(function(r2){ return r2.ok ? r2.json() : null; }).then(function(j){
+          sha = j ? j.sha : null; return saveAgain();
+        });
+      }
+      if (r.status === 403 || r.status === 404) { status('Kunde inte spara: token saknar skrivrätt (Contents: Read and write) till repot landing.', 'fel'); return; }
+      status('Kunde inte spara på GitHub (fel ' + r.status + ').', 'fel');
+    }).catch(function(){ status('Kunde inte spara: ingen internetanslutning. Ändringen finns kvar på den här enheten.', 'fel'); });
+    function saveAgain(){ return sparaInst(false); }
+  }
+
+  // ---------- Tema ----------
+  var tema = LS.get('landing-tema') || 'auto';
+  function satTema(t, spara){
+    tema = (t === 'light' || t === 'dark') ? t : 'auto';
+    if (tema === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', tema);
+    LS.set('landing-tema', tema);
+    document.querySelectorAll('#tema button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.t === tema ? 'true' : 'false'); });
+    if (spara) sparaSenare();
+  }
+  document.querySelectorAll('#tema button').forEach(function(b){ b.onclick = function(){ satTema(b.dataset.t, true); }; });
 
   // ---------- Ordning på knapparna ----------
-  var nav = document.getElementById('appar');
+  var nav = $('appar');
   var kort = {};
   nav.querySelectorAll('.app').forEach(function(a){ kort[a.dataset.id] = a; });
   var standard = Object.keys(kort);
   var ordning = standard.slice();
-  try {
-    var sparad = JSON.parse(localStorage.getItem('landing-ordning') || 'null');
-    if (Array.isArray(sparad)) {
-      ordning = sparad.filter(function(id){ return kort[id]; });
-      standard.forEach(function(id){ if (ordning.indexOf(id) < 0) ordning.push(id); });
-    }
-  } catch(e){}
+  function satOrdning(lista){
+    if (!Array.isArray(lista)) return;
+    var ny = lista.filter(function(id, i){ return kort[id] && lista.indexOf(id) === i; });
+    standard.forEach(function(id){ if (ny.indexOf(id) < 0) ny.push(id); });
+    ordning = ny;
+  }
+  try { satOrdning(JSON.parse(LS.get('landing-ordning') || 'null')); } catch(e){}
   var UPP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
   var NER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
   function rita(){
     ordning.forEach(function(id){ nav.appendChild(kort[id]); });
-    var ul = document.getElementById('ordning');
+    var ul = $('ordning');
     ul.innerHTML = ordning.map(function(id, i){
       var a = kort[id];
       return '<li><img src="' + a.querySelector('img').src + '" alt=""><span class="n">' + a.querySelector('.namn b').textContent + '</span>' +
@@ -166,18 +254,80 @@ dialog h3{margin:0 0 4px;font-weight:800;font-size:1.3rem}
       b.onclick = function(){
         var i = +b.dataset.i, j = i + (+b.dataset.d);
         var tmp = ordning[i]; ordning[i] = ordning[j]; ordning[j] = tmp;
-        try { localStorage.setItem('landing-ordning', JSON.stringify(ordning)); } catch(e){}
+        LS.set('landing-ordning', JSON.stringify(ordning));
         rita();
+        sparaSenare();
       };
     });
   }
+
+  // ---------- Lås och lås upp ----------
+  function las(){
+    document.body.classList.add('last');
+    $('tokenNy').hidden = false; $('tokenFinns').hidden = true;
+  }
+  function lasUpp(){
+    document.body.classList.remove('last');
+    $('tokenNy').hidden = true; $('tokenFinns').hidden = false;
+    $('tokenFalt').value = '';
+  }
+  function anvandInst(inst){
+    if (!inst) return;
+    if (inst.tema) satTema(inst.tema, false);
+    if (inst.ordning) { satOrdning(inst.ordning); LS.set('landing-ordning', JSON.stringify(ordning)); }
+    rita();
+  }
+  function hamtaOchVisa(){
+    return hamtaInst().then(anvandInst).catch(function(){
+      status('Kunde inte hämta inställningarna från GitHub just nu. Visar de som finns på den här enheten.', 'fel');
+    });
+  }
+
+  satTema(tema, false);
   rita();
 
+  function start(){
+    if (!token) { las(); return; }
+    kollaToken().then(function(svar){
+      if (svar === 'ok') { LS.set('landing-upplast', '1'); lasUpp(); hamtaOchVisa(); }
+      else if (svar === 'natfel' && LS.get('landing-upplast') === '1') { lasUpp(); }  // utan internet: visa med sparade inställningar
+      else { LS.del('landing-token'); LS.del('landing-upplast'); token = null; las(); }
+    });
+  }
+
+  $('tokenSpara').onclick = function(){
+    var t = $('tokenFalt').value.trim();
+    if (!t) { status('Klistra in din token först.', 'fel'); return; }
+    var knapp = $('tokenSpara');
+    knapp.disabled = true; status('Kontrollerar token…');
+    token = t;
+    kollaToken().then(function(svar){
+      knapp.disabled = false;
+      if (svar === 'ok') {
+        LS.set('landing-token', t); LS.set('landing-upplast', '1');
+        status('Rätt token. Välkommen!', 'ok');
+        lasUpp();
+        hamtaOchVisa();
+      } else {
+        token = null;
+        status(svar === 'natfel' ? 'Ingen kontakt med GitHub. Kolla internet och försök igen.' : 'Fel token. Kontrollera att du kopierade hela token.', 'fel');
+      }
+    });
+  };
+  $('tokenFalt').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('tokenSpara').click(); });
+  $('tokenTaBort').onclick = function(){
+    LS.del('landing-token'); LS.del('landing-upplast'); token = null;
+    status('Token borttagen från den här enheten.');
+    las();
+  };
+
   // ---------- Inställningsrutan ----------
-  var dlg = document.getElementById('dlg');
-  document.getElementById('setBtn').onclick = function(){ dlg.showModal(); };
-  document.getElementById('stang').onclick = function(){ dlg.close(); };
+  var dlg = $('dlg');
+  $('setBtn').onclick = function(){ status(''); dlg.showModal(); };
+  $('stang').onclick = function(){ dlg.close(); };
   dlg.addEventListener('click', function(e){ if (e.target === dlg) dlg.close(); });
+
+  start();
 })();
 </script>
 </body>
