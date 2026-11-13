@@ -9,11 +9,14 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-maskable-512.png">
+<script>try{var t=localStorage.getItem("landing-tema");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <style>
 :root{--bg:#e8f2fb;--card:#ffffff;--ink:#1a2433;--mut:#5a6b80;--line:#cfdcea;--acc:#2563d6;--accink:#ffffff;--helg:#ffd84d;--helgink:#3a2c00;--rain:#1f8fd1;
   --c-mat:#f08a24;--c-tv:#6e56cf;--c-vader:#1f8fd1}
-@media (prefers-color-scheme:dark){:root{--bg:#101a28;--card:#1a2638;--ink:#eaf1fb;--mut:#9fb1c8;--line:#2b3b52;--acc:#7aa8ff;--accink:#0a1a38;--helg:#e0b92f;--helgink:#241b00;--rain:#7cc4ff;
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101a28;--card:#1a2638;--ink:#eaf1fb;--mut:#9fb1c8;--line:#2b3b52;--acc:#7aa8ff;--accink:#0a1a38;--helg:#e0b92f;--helgink:#241b00;--rain:#7cc4ff;
   --c-mat:#ffb15c;--c-tv:#a995ff;--c-vader:#7cc4ff}}
+:root[data-theme="dark"]{--bg:#101a28;--card:#1a2638;--ink:#eaf1fb;--mut:#9fb1c8;--line:#2b3b52;--acc:#7aa8ff;--accink:#0a1a38;--helg:#e0b92f;--helgink:#241b00;--rain:#7cc4ff;
+  --c-mat:#ffb15c;--c-tv:#a995ff;--c-vader:#7cc4ff}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.5 ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 main{max-width:640px;margin:0 auto;padding:28px 18px 48px}
@@ -35,15 +38,43 @@ h1{margin:0 0 26px;font-size:clamp(2.4rem,9vw,3.6rem);line-height:1;font-weight:
 .huvud .namn small{display:block;font-size:.85rem;font-weight:700;color:var(--mut)}
 .pil{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);color:var(--ink);flex:none}
 .pil svg{width:20px;height:20px}
+/* Topp och inställningar */
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.icon-btn{width:44px;height:44px;padding:0;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;flex:none}
+.icon-btn svg{width:22px;height:22px}
+button{font:inherit}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+dialog{border:0;border-radius:20px;padding:20px;width:min(92vw,440px);background:var(--card);color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{margin:0 0 4px;font-weight:800;font-size:1.3rem}
+.sek{margin-top:22px}
+.sek h4{margin:0 0 8px;font-size:.95rem;font-weight:800}
+.hint{color:var(--mut);font-size:.88rem;margin:0 0 10px}
+.seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--bg)}
+.seg button{flex:1;height:44px;border:0;border-radius:999px;background:transparent;color:var(--mut);font-weight:700;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--accink);font-weight:800}
+.ordning{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ordning li{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:16px;padding:8px 8px 8px 12px}
+.ordning img{width:36px;height:36px;border-radius:50%;flex:none}
+.ordning .n{flex:1;font-weight:800}
+.ordning button{width:40px;height:40px;padding:0;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;flex:none}
+.ordning button:disabled{opacity:.3;cursor:default}
+.ordning button svg{width:18px;height:18px}
+.close{margin-top:22px;width:100%;height:46px;border:0;border-radius:999px;background:var(--acc);color:var(--accink);font-weight:800;cursor:pointer}
 </style>
 </head>
 <body>
 <main>
-  <p class="dag" id="dag"></p>
-  <h1 id="halsning">Hej!</h1>
+  <div class="top">
+    <div>
+      <p class="dag" id="dag"></p>
+      <h1 id="halsning">Hej!</h1>
+    </div>
+    <button class="icon-btn" id="setBtn" type="button" aria-label="Inställningar" title="Inställningar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  </div>
 
-  <nav class="appar" aria-label="Mina appar">
-    <a class="app mat" href="https://tomas-m-andersson.github.io/mat/">
+  <nav class="appar" id="appar" aria-label="Mina appar">
+    <a class="app mat" data-id="mat" href="https://tomas-m-andersson.github.io/mat/">
       <div class="huvud">
         <img src="https://tomas-m-andersson.github.io/mat/icon-192.png" alt="">
         <div class="namn"><b>Mat</b><small>Veckomeny, inköp och recept</small></div>
@@ -51,7 +82,7 @@ h1{margin:0 0 26px;font-size:clamp(2.4rem,9vw,3.6rem);line-height:1;font-weight:
       </div>
     </a>
 
-    <a class="app tv" href="https://tomas-m-andersson.github.io/tv/">
+    <a class="app tv" data-id="tv" href="https://tomas-m-andersson.github.io/tv/">
       <div class="huvud">
         <img src="https://tomas-m-andersson.github.io/tv/icon-192.png" alt="">
         <div class="namn"><b>TV</b><small>Filmer och serier att se</small></div>
@@ -59,7 +90,7 @@ h1{margin:0 0 26px;font-size:clamp(2.4rem,9vw,3.6rem);line-height:1;font-weight:
       </div>
     </a>
 
-    <a class="app vader" href="https://tomas-m-andersson.github.io/vader/">
+    <a class="app vader" data-id="vader" href="https://tomas-m-andersson.github.io/vader/">
       <div class="huvud">
         <img src="https://tomas-m-andersson.github.io/vader/icon-192.png" alt="">
         <div class="namn"><b>Väder</b><small>Prognos för dina orter</small></div>
@@ -70,6 +101,24 @@ h1{margin:0 0 26px;font-size:clamp(2.4rem,9vw,3.6rem);line-height:1;font-weight:
 
 </main>
 
+<dialog id="dlg">
+  <h3>Inställningar</h3>
+  <div class="sek">
+    <h4>🎨 Tema</h4>
+    <div class="seg" id="tema">
+      <button type="button" data-t="auto">Auto</button>
+      <button type="button" data-t="light">Ljust</button>
+      <button type="button" data-t="dark">Mörkt</button>
+    </div>
+  </div>
+  <div class="sek">
+    <h4>↕️ Ordning på knapparna</h4>
+    <p class="hint">Tryck på pilarna för att flytta en app upp eller ner.</p>
+    <ul class="ordning" id="ordning"></ul>
+  </div>
+  <button class="close" id="stang" type="button">Klar</button>
+</dialog>
+
 <script>
 (function(){
   var pad = function(n){ return String(n).padStart(2,'0'); };
@@ -77,6 +126,58 @@ h1{margin:0 0 26px;font-size:clamp(2.4rem,9vw,3.6rem);line-height:1;font-weight:
   var nu = new Date(), h = nu.getHours();
   document.getElementById('dag').textContent = DAGAR[nu.getDay()] + ' ' + nu.getFullYear() + '-' + pad(nu.getMonth()+1) + '-' + pad(nu.getDate());
   document.getElementById('halsning').textContent = h < 5 ? 'God natt!' : h < 10 ? 'God morgon!' : h < 17 ? 'Hej!' : 'God kväll!';
+  // ---------- Tema ----------
+  var tema = 'auto';
+  try { tema = localStorage.getItem('landing-tema') || 'auto'; } catch(e){}
+  function satTema(t){
+    tema = t;
+    if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('landing-tema', t); } catch(e){}
+    document.querySelectorAll('#tema button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.t === t ? 'true' : 'false'); });
+  }
+  document.querySelectorAll('#tema button').forEach(function(b){ b.onclick = function(){ satTema(b.dataset.t); }; });
+  satTema(tema);
+
+  // ---------- Ordning på knapparna ----------
+  var nav = document.getElementById('appar');
+  var kort = {};
+  nav.querySelectorAll('.app').forEach(function(a){ kort[a.dataset.id] = a; });
+  var standard = Object.keys(kort);
+  var ordning = standard.slice();
+  try {
+    var sparad = JSON.parse(localStorage.getItem('landing-ordning') || 'null');
+    if (Array.isArray(sparad)) {
+      ordning = sparad.filter(function(id){ return kort[id]; });
+      standard.forEach(function(id){ if (ordning.indexOf(id) < 0) ordning.push(id); });
+    }
+  } catch(e){}
+  var UPP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
+  var NER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  function rita(){
+    ordning.forEach(function(id){ nav.appendChild(kort[id]); });
+    var ul = document.getElementById('ordning');
+    ul.innerHTML = ordning.map(function(id, i){
+      var a = kort[id];
+      return '<li><img src="' + a.querySelector('img').src + '" alt=""><span class="n">' + a.querySelector('.namn b').textContent + '</span>' +
+        '<button type="button" data-i="' + i + '" data-d="-1" aria-label="Flytta upp"' + (i === 0 ? ' disabled' : '') + '>' + UPP + '</button>' +
+        '<button type="button" data-i="' + i + '" data-d="1" aria-label="Flytta ner"' + (i === ordning.length - 1 ? ' disabled' : '') + '>' + NER + '</button></li>';
+    }).join('');
+    ul.querySelectorAll('button').forEach(function(b){
+      b.onclick = function(){
+        var i = +b.dataset.i, j = i + (+b.dataset.d);
+        var tmp = ordning[i]; ordning[i] = ordning[j]; ordning[j] = tmp;
+        try { localStorage.setItem('landing-ordning', JSON.stringify(ordning)); } catch(e){}
+        rita();
+      };
+    });
+  }
+  rita();
+
+  // ---------- Inställningsrutan ----------
+  var dlg = document.getElementById('dlg');
+  document.getElementById('setBtn').onclick = function(){ dlg.showModal(); };
+  document.getElementById('stang').onclick = function(){ dlg.close(); };
+  dlg.addEventListener('click', function(e){ if (e.target === dlg) dlg.close(); });
 })();
 </script>
 </body>
