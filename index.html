@@ -86,7 +86,7 @@ body.last .top{justify-content:flex-end}
   <nav class="appar" id="appar" aria-label="Mina appar">
     <a class="app mat" data-id="mat" href="https://tomas-m-andersson.github.io/mat/">
       <div class="huvud">
-        <img src="ikoner/mat.png" alt="">
+        <img src="ikoner/mat.png" data-ikon="mat" alt="">
         <div class="namn"><b>Mat</b><small>Veckomeny, inköp och recept</small></div>
         <span class="pil" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
       </div>
@@ -94,7 +94,7 @@ body.last .top{justify-content:flex-end}
 
     <a class="app tv" data-id="tv" href="https://tomas-m-andersson.github.io/tv/">
       <div class="huvud">
-        <img src="ikoner/tv.png" alt="">
+        <img src="ikoner/tv.png" data-ikon="tv" alt="">
         <div class="namn"><b>Se &amp; Läsa</b><small>Filmer, serier och böcker</small></div>
         <span class="pil" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
       </div>
@@ -102,14 +102,14 @@ body.last .top{justify-content:flex-end}
 
     <a class="app vader" data-id="vader" href="https://tomas-m-andersson.github.io/vader/">
       <div class="huvud">
-        <img src="ikoner/vader.png" alt="">
+        <img src="ikoner/vader.png" data-ikon="vader" alt="">
         <div class="namn"><b>Väder</b><small>Prognos för dina orter</small></div>
         <span class="pil" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
       </div>
     </a>
     <a class="app notes" data-id="notes" href="https://tomas-m-andersson.github.io/notes/">
       <div class="huvud">
-        <img src="ikoner/notes.png" alt="">
+        <img src="ikoner/notes.png" data-ikon="notes" alt="">
         <div class="namn"><b>Notes</b><small>Anteckningar och listor</small></div>
         <span class="pil" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
       </div>
@@ -253,7 +253,7 @@ body.last .top{justify-content:flex-end}
     var ul = $('ordning');
     ul.innerHTML = ordning.map(function(id, i){
       var a = kort[id];
-      return '<li><img src="' + a.querySelector('img').src + '" alt=""><span class="n">' + a.querySelector('.namn b').textContent + '</span>' +
+      return '<li><img src="' + a.querySelector('img').src + '" data-ikon="' + id + '" alt=""><span class="n">' + a.querySelector('.namn b').textContent + '</span>' +
         '<button type="button" data-i="' + i + '" data-d="-1" aria-label="Flytta upp"' + (i === 0 ? ' disabled' : '') + '>' + UPP + '</button>' +
         '<button type="button" data-i="' + i + '" data-d="1" aria-label="Flytta ner"' + (i === ordning.length - 1 ? ' disabled' : '') + '>' + NER + '</button></li>';
     }).join('');
@@ -267,6 +267,40 @@ body.last .top{justify-content:flex-end}
       };
     });
   }
+
+
+  // ---------- Ikoner: hämtas från respektive app ----------
+  // Läser appens manifest.webmanifest och tar ikonen därifrån. Om appen inte går att nå
+  // behålls reservkopian i mappen ikoner/ här i landing.
+  function valjIkon(ikoner){
+    var bra = (ikoner || []).filter(function(i){ return i && i.src && (!i.purpose || /\bany\b/.test(i.purpose)); });
+    if (!bra.length) bra = (ikoner || []).filter(function(i){ return i && i.src; });
+    var storlek = function(i){ var m = String(i.sizes || '').match(/(\d+)x/); return m ? +m[1] : 0; };
+    bra.sort(function(a, b){
+      var sa = storlek(a), sb = storlek(b);
+      var poang = function(s){ return s >= 192 ? s - 192 : 10000 + (192 - s); };  // helst 192, annars närmast större
+      return poang(sa) - poang(sb);
+    });
+    return bra[0];
+  }
+  function bytIkon(id, url){
+    var bild = new Image();
+    bild.onload = function(){ document.querySelectorAll('img[data-ikon="' + id + '"]').forEach(function(img){ img.src = url; }); };
+    bild.src = url;
+  }
+  Object.keys(kort).forEach(function(id){
+    var app = kort[id].href;
+    var manifestUrl = app + 'manifest.webmanifest';
+    fetch(manifestUrl, { cache: 'no-cache' }).then(function(r){
+      if (!r.ok) throw new Error();
+      return r.json();
+    }).then(function(m){
+      var ikon = valjIkon(m && m.icons);
+      bytIkon(id, ikon ? new URL(ikon.src, manifestUrl).href : app + 'icon-192.png');
+    }).catch(function(){
+      bytIkon(id, app + 'icon-192.png');
+    });
+  });
 
   // ---------- Lås och lås upp ----------
   function las(){
